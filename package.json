@@ -1,0 +1,21 @@
+{
+  "name": "flowstate-telemetry",
+  "version": "1.0.0",
+  "description": "Real-time workflow and task telemetry tracker with React, Tailwind CSS, and Firestore state sync",
+  "main": "src/telemetryEngine.js",
+  "scripts": {
+    "test": "jest",
+    "serve": "python3 -m http.server 8080"
+  },
+  "author": "Sudip Barman",
+  "license": "MIT",
+  "dependencies": {
+    "firebase": "^10.12.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "tailwindcss": "^3.4.4"
+  }
+}
