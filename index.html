@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FlowState Telemetry | Evaluation & Workflow Tracker</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+    const STORAGE_KEY = "flowstate_telemetry_records_v1";
+
+    function formatClock(seconds) {
+      const s = Math.max(0, Math.floor(seconds || 0));
+      const m = Math.floor(s / 60);
+      const rem = s % 60;
+      return String(m).padStart(2, "0") + ":" + String(rem).padStart(2, "0");
+    }
+
+    function App() {
+      const [tasks, setTasks] = useState(() => {
+        try {
+          const saved = localStorage.getItem(STORAGE_KEY);
+          return saved ? JSON.parse(saved) : [];
+        } catch {
+          return [];
+        }
+      });
+      const [taskIdInput, setTaskIdInput] = useState("");
+      const [categoryInput, setCategoryInput] = useState("SxS Code Eval");
+      const [activeTaskId, setActiveTaskId] = useState(null);
+      const [notesInput, setNotesInput] = useState("");
+
+      useEffect(() => {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+      }, [tasks]);
+
+      useEffect(() => {
+        if (!activeTaskId) return;
+        const interval = setInterval(() => {
+          setTasks((prev) =>
+            prev.map((t) =>
+              t.taskId === activeTaskId && t.status === "in_progress"
+                ? { ...t, elapsedSeconds: t.elapsedSeconds + 1 }
+                : t
+            )
+          );
+        }, 1000);
+        return () => clearInterval(interval);
+      }, [activeTaskId]);
+
+      const startNewTask = (e) => {
+        e.preventDefault();
+        if (!taskIdInput.trim()) return;
+        const newRecord = {
+          taskId: taskIdInput.trim(),
+          category: categoryInput,
+          status: "in_progress",
+          elapsedSeconds: 0,
+          slaSeconds: 2700,
+          notes: notesInput.trim(),
+          startedAt: new Date().toISOString()
+        };
+        setTasks([newRecord, ...tasks]);
+        setActiveTaskId(newRecord.taskId);
+        setTaskIdInput("");
+        setNotesInput("");
+      };
+
+      const completeTask = (id) => {
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.taskId === id ? { ...t, status: "completed", completedAt: new Date().toISOString() } : t
+          )
+        );
+        if (activeTaskId === id) setActiveTaskId(null);
+      };
+
+      const exportMarkdown = () => {
+        const lines = [
+          "# FlowState Evaluation Telemetry Log",
+          "",
+          "| Task ID | Category | Duration | Status | Notes |",
+          "| :--- | :--- | :--- | :--- | :--- |",
+          ...tasks.map(
+            (t) =>
+              "| " + t.taskId + " | " + t.category + " | " + formatClock(t.elapsedSeconds) + " | " + t.status + " | " + (t.notes || "-") + " |"
+          )
+        ];
+        const blob = new Blob([lines.join("\n")], { type: "text/markdown" });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = "telemetry_session_export.md";
+        a.click();
+      };
+
+      const totalSeconds = useMemo(() => tasks.reduce((s, t) => s + t.elapsedSeconds, 0), [tasks]);
+
+      return (
+        <div className="max-w-5xl mx-auto p-6">
+          <header className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
+            <div>
+              <h1 className="text-2xl font-bold text-sky-400">FlowState Telemetry</h1>
+              <p className="text-sm text-slate-400">Real-Time Evaluation & Task Session Tracker</p>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={exportMarkdown}
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2 rounded-lg text-sm font-medium border border-slate-700"
+              >
+                Export Markdown
+              </button>
+            </div>
+          </header>
+
+          <form onSubmit={startNewTask} className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-slate-900 p-4 rounded-xl border border-slate-800 mb-6">
+            <input
+              value={taskIdInput}
+              onChange={(e) => setTaskIdInput(e.target.value)}
+              placeholder="Task ID (e.g. SWE-402)"
+              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm"
+            />
+            <select
+              value={categoryInput}
+              onChange={(e) => setCategoryInput(e.target.value)}
+              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm"
+            >
+              <option>SxS Code Eval</option>
+              <option>Math Proof Audit</option>
+              <option>AST Patch Review</option>
+              <option>Red Teaming</option>
+            </select>
+            <input
+              value={notesInput}
+              onChange={(e) => setNotesInput(e.target.value)}
+              placeholder="Key defect or rubric note..."
+              className="bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm"
+            />
+            <button type="submit" className="bg-sky-600 hover:bg-sky-500 text-white font-semibold rounded-lg px-4 py-2 text-sm">
+              Start Task Timer
+            </button>
+          </form>
+
+          <div className="space-y-3">
+            {tasks.map((t) => (
+              <div key={t.taskId} className="flex items-center justify-between bg-slate-900 px-4 py-3 rounded-xl border border-slate-800">
+                <div>
+                  <span className="font-mono font-bold text-sky-400 mr-3">{t.taskId}</span>
+                  <span className="text-xs bg-slate-800 px-2 py-1 rounded text-slate-300">{t.category}</span>
+                  {t.notes && <p className="text-xs text-slate-400 mt-1">{t.notes}</p>}
+                </div>
+                <div className="flex items-center gap-4">
+                  <span className="font-mono text-lg">{formatClock(t.elapsedSeconds)}</span>
+                  {t.status !== "completed" ? (
+                    <button
+                      onClick={() => completeTask(t.taskId)}
+                      className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs px-3 py-1.5 rounded-md font-medium"
+                    >
+                      Mark Done
+                    </button>
+                  ) : (
+                    <span className="text-xs text-emerald-400 font-semibold">Completed</span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+  </script>
+</body>
+</html>
