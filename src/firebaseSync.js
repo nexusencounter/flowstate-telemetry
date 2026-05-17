@@ -74,3 +74,24 @@ module.exports = {
   STORAGE_KEY,
   TelemetryStore
 };
+
+TelemetryStore.prototype.flushPendingQueue = async function () {
+  if (!this.firestoreDb || this.pendingQueue.length === 0) {
+    return { flushed: 0, remaining: this.pendingQueue.length };
+  }
+  let flushedCount = 0;
+  const remaining = [];
+  for (const item of this.pendingQueue) {
+    try {
+      await this.firestoreDb
+        .collection(this.collectionName)
+        .doc(item.taskId)
+        .set(item, { merge: true });
+      flushedCount += 1;
+    } catch (err) {
+      remaining.push(item);
+    }
+  }
+  this.pendingQueue = remaining;
+  return { flushed: flushedCount, remaining: remaining.length };
+};
