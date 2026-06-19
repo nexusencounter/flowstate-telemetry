@@ -38,3 +38,14 @@ module.exports = {
   generateMarkdownReport,
   generateJsonlBatch
 };
+
+function summarizeByCategory(tasks) {
+  const counts = {};
+  for (const t of tasks || []) {
+    const cat = t.category || "uncategorized";
+    counts[cat] = (counts[cat] || 0) + 1;
+  }
+  return counts;
+}
+
+module.exports.summarizeByCategory = summarizeByCategory;
