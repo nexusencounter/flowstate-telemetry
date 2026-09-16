@@ -70,3 +70,12 @@ module.exports = {
   evaluateSlaState,
   computeSessionMetrics
 };
+
+function calculateThroughputPerHour(tasks) {
+  const metrics = computeSessionMetrics(tasks);
+  if (metrics.totalSeconds <= 0 || metrics.completedTasks <= 0) return 0.0;
+  const hours = metrics.totalSeconds / 3600;
+  return Number((metrics.completedTasks / hours).toFixed(2));
+}
+
+module.exports.calculateThroughputPerHour = calculateThroughputPerHour;
