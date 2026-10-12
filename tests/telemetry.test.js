@@ -63,3 +63,13 @@ describe("markdownExporter and filtering tests", () => {
     expect(summary["math-proof"]).toBe(1);
   });
 });
+
+const { calculateThroughputPerHour } = require("../src/telemetryEngine");
+
+test("calculates hourly throughput rate accurately", () => {
+  const batch = [
+    { taskId: "A1", status: "completed", elapsedSeconds: 1800, slaSeconds: 2700 },
+    { taskId: "A2", status: "completed", elapsedSeconds: 1800, slaSeconds: 2700 }
+  ];
+  expect(calculateThroughputPerHour(batch)).toBe(2.0);
+});
